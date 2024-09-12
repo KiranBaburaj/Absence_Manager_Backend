@@ -1,10 +1,32 @@
+# serializers.py
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
+from .models import Department
 
 User = get_user_model()
 
+from rest_framework import serializers
+from .models import User
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'role', 'is_approved']  # Customize fields as necessary
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ['id', 'name']
+
 class RegisterSerializer(serializers.ModelSerializer):
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(), 
+        required=False
+    )
+    
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'role', 'department']
@@ -20,6 +42,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
+
+    def get_tokens(self, user):
+        refresh = RefreshToken.for_user(user)
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
