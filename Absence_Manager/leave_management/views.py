@@ -1,11 +1,7 @@
-from rest_framework import viewsets, generics
-from .models import LeaveRequest, LeaveSummary, CalendarEvent
-from .serializers import LeaveRequestSerializer, LeaveSummarySerializer, CalendarEventSerializer
-
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import LeaveRequest
-from .serializers import LeaveRequestSerializer
+from .models import LeaveRequest, LeaveSummary, CalendarEvent
+from .serializers import LeaveRequestSerializer, LeaveSummarySerializer, CalendarEventSerializer
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.all()
@@ -27,11 +23,16 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
 class LeaveSummaryViewSet(viewsets.ModelViewSet):
     queryset = LeaveSummary.objects.all()
     serializer_class = LeaveSummarySerializer
+    permission_classes = [IsAuthenticated]
 
-    def get_object(self):
-        # Ensure only one LeaveSummary per user
-        obj, created = LeaveSummary.objects.get_or_create(user=self.request.user)
-        return obj
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'manager':
+            # If the user is a manager, return leave summaries from users in their department
+            return LeaveSummary.objects.filter(user__department=user.department)
+        else:
+            # If the user is a regular user, return their leave summary
+            return LeaveSummary.objects.filter(user=user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -39,6 +40,16 @@ class LeaveSummaryViewSet(viewsets.ModelViewSet):
 class CalendarEventViewSet(viewsets.ModelViewSet):
     queryset = CalendarEvent.objects.all()
     serializer_class = CalendarEventSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'manager':
+            # If the user is a manager, return calendar events from users in their department
+            return CalendarEvent.objects.filter(user__department=user.department)
+        else:
+            # If the user is a regular user, return their calendar events
+            return CalendarEvent.objects.filter(user=user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
