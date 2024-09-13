@@ -14,7 +14,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 class LeaveSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveSummary
-        fields = ['user', 'annual_leave', 'sick_leave', 'casual_leave', 'maternity_leave']
+        fields = ['user', 'annual_leave', 'sick_leave', 'casual_leave', 'maternity_leave',]
 
 class CalendarEventSerializer(serializers.ModelSerializer):
     class Meta:

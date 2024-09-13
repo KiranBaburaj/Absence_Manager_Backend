@@ -96,3 +96,11 @@ class LeaveRequest(models.Model):
                 self.calendar_event.save()
 
         super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        # Explicitly delete related calendar events and leave summary
+        if self.calendar_event:
+            self.calendar_event.delete()
+        if self.leave_summary and not self.leave_summary.leave_requests.exists():
+            self.leave_summary.delete()
+        super().delete(*args, **kwargs)
