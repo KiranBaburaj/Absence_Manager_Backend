@@ -58,6 +58,12 @@ class LeaveRequest(models.Model):
         return (self.end_date - self.start_date).days + 1
 
     def save(self, *args, **kwargs):
+        # Get the previous status of the leave request
+        previous_status = None
+        if self.pk:  # Check if the object already exists
+            previous_instance = LeaveRequest.objects.get(pk=self.pk)
+            previous_status = previous_instance.status
+
         # Automatically set the manager based on the user's department
         if not self.manager:
             if self.user.department:
@@ -95,7 +101,27 @@ class LeaveRequest(models.Model):
                 self.calendar_event.end_date = self.end_date
                 self.calendar_event.save()
 
+        # Handle case where the status changes from approved to rejected
+        if previous_status == 'approved' and self.status == 'rejected':
+            # Revert the leave summary
+            if self.leave_summary:
+                if self.leave_type == 'annual':
+                    self.leave_summary.annual_leave -= self.duration
+                elif self.leave_type == 'sick':
+                    self.leave_summary.sick_leave -= self.duration
+                elif self.leave_type == 'casual':
+                    self.leave_summary.casual_leave -= self.duration
+                elif self.leave_type == 'maternity':
+                    self.leave_summary.maternity_leave -= self.duration
+                self.leave_summary.save()
+
+            # Delete the associated calendar event
+            if self.calendar_event:
+                self.calendar_event.delete()
+                self.calendar_event = None  # Reset the calendar event field
+
         super().save(*args, **kwargs)
+
     
     def delete(self, *args, **kwargs):
         # Explicitly delete related calendar events and leave summary
