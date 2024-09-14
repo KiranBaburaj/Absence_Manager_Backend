@@ -122,11 +122,25 @@ class LeaveRequest(models.Model):
 
         super().save(*args, **kwargs)
 
-    
     def delete(self, *args, **kwargs):
-        # Explicitly delete related calendar events and leave summary
+        # Update the leave summary if the leave was approved
+        if self.status == 'approved' and self.leave_summary:
+            if self.leave_type == 'annual':
+                self.leave_summary.annual_leave -= self.duration
+            elif self.leave_type == 'sick':
+                self.leave_summary.sick_leave -= self.duration
+            elif self.leave_type == 'casual':
+                self.leave_summary.casual_leave -= self.duration
+            elif self.leave_type == 'maternity':
+                self.leave_summary.maternity_leave -= self.duration
+            self.leave_summary.save()
+            
+            # Delete the leave summary if it has no more associated leave requests
+            if not self.leave_summary.leave_requests.exists():
+                self.leave_summary.delete()
+        
+        # Delete the associated calendar event if it exists
         if self.calendar_event:
             self.calendar_event.delete()
-        if self.leave_summary and not self.leave_summary.leave_requests.exists():
-            self.leave_summary.delete()
+        
         super().delete(*args, **kwargs)
